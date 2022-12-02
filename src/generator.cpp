@@ -40,7 +40,7 @@ namespace Driver
         _TIM_PWM_BASE->DIER = TIM_DIER_UIE;
         //_TIM_PWM_BASE->EGR |= TIM_EGR_UG;
 
-        _TIM_PWM_BASE->PSC = (cnt_to_psc(encoder_counter));
+        _TIM_PWM_BASE->PSC = PSC_value;
         _TIM_PWM_BASE->ARR = ARR_value;
 
         _TIM_PWM_BASE->CR1 |= TIM_CR1_CEN;
@@ -340,17 +340,22 @@ extern "C" void TIM1_UP_TIM10_IRQHandler()
     {
         VFD::_TIM_PWM_BASE->SR = 0;
 
+        /* увеличение частоты */
+        VFD::phase_U += VFD::dfreq;
+        VFD::phase_V += VFD::dfreq;
+        VFD::phase_W += VFD::dfreq;
+
         VFD::_TIM_PWM_BASE->CCR1 = VFD::_sine_table_phases[(!VFD::is_reverse) ? VFD::phase_U : VFD::phase_W] * VFD::koeff_voltage;
         VFD::_TIM_PWM_BASE->CCR2 = VFD::_sine_table_phases[VFD::phase_V] * VFD::koeff_voltage;
         VFD::_TIM_PWM_BASE->CCR3 = VFD::_sine_table_phases[(!VFD::is_reverse) ? VFD::phase_W : VFD::phase_U] * VFD::koeff_voltage;
 
-        if (++VFD::phase_U == VFD::array_size)
+        if (++VFD::phase_U >= VFD::array_size)
             VFD::phase_U = 0;
 
-        if (++VFD::phase_V == VFD::array_size)
+        if (++VFD::phase_V >= VFD::array_size)
             VFD::phase_V = 0;
 
-        if (++VFD::phase_W == VFD::array_size)
+        if (++VFD::phase_W >= VFD::array_size)
             VFD::phase_W = 0;
     }
     // GPIOA->ODR ^= GPIO_ODR_OD5_Msk;

@@ -5,6 +5,8 @@
 #include <stm32f4_spi.hpp>
 #include <array>
 
+#include <settings.hpp>
+
 extern "C" void TIM1_UP_TIM10_IRQHandler();
 extern "C" void EXTI0_IRQHandler();
 extern "C" void EXTI1_IRQHandler();
@@ -65,14 +67,15 @@ namespace Driver
         static inline GPIO_TypeDef *_ITRIP_PIN_BASE = GPIOA;
         static inline GPIO_TypeDef *_VFO_PIN_BASE = GPIOB;
 
-        static constexpr auto array_size = 30;
-        static constexpr auto ARR_value = 1'000u;
-
+        static constexpr auto array_size = __settings::_size;
+        static constexpr auto dfreq = 100u;
+        static constexpr auto ARR_value = 8400 - 1; //несущая - 10 кГЦ
+        static constexpr auto PSC_value = 0;
 
         static constexpr auto DMA_buffer_size = 3;
         static inline uint8_t encoder_counter = 50;
         static constexpr auto
-            phase_U_start_value = 0,
+            phase_U_start_value = 0u,
             phase_V_start_value = array_size / 3,
             phase_W_start_value = array_size - array_size / 3;
 
@@ -86,23 +89,7 @@ namespace Driver
         static inline bool is_reverse = false;
         //static inline uint8_t frequency{10};
     private:
-        static constexpr std::array<uint16_t, array_size> _sine_table_phases
-        {
-            /* 128, 136, 145, 154, 163, 171, 179, 187, 195, 202,
-            209, 216, 222, 228, 233, 238, 242, 246, 249, 251,
-            253, 254, 255, 255, 254, 253, 251, 249, 246, 242,
-            238, 233, 228, 222, 216, 209, 202, 195, 187, 179,
-            171, 163, 154, 145, 136, 128, 119, 110, 101, 92,
-            84, 76, 68, 60, 53, 46, 39, 33, 27, 22,
-            17, 13, 9, 6, 4, 2, 1, 0, 0, 1,
-            2, 4, 6, 9, 13, 17, 22, 27, 33, 39,
-            46, 53, 60, 68, 76, 84, 92, 101, 110, 119 */
-            500, 603, 703, 793, 871, 932, 975,
-            996, 996, 975, 932, 871, 793, 703,
-            603, 500, 396, 296, 206, 128, 67,
-            24, 3, 3, 24, 67, 128, 206,
-            296, 396
-        };
+        static constexpr std::array<uint16_t, array_size> _sine_table_phases = __settings::_array;
         static inline std::array<uint16_t, DMA_buffer_size> DMA_buffer;
 
         public:
