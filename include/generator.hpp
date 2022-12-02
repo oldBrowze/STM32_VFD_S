@@ -39,6 +39,20 @@ extern "C" void DMA2_Stream0_IRQHandler();
  */
 namespace Driver
 {
+    /* system constants */
+
+    //Больше - выше приоритет
+    enum IRQ_Priority : uint8_t
+    {
+        EXTI2_encoder_button = 1,
+        EXTI0_encoder_rotate = 1,
+        EXTI1_VFO_detected = 13,
+        DMA2_Stream0_transfer_from_adc = 14,
+        EXTI15_10_button_start_stop = 10,
+        EXTI9_5_button_reverse = 11,
+        TIM1_UP_TIM10_pwm_generation = 15
+    };
+
     class VFDController final
     {
     public:
@@ -51,12 +65,12 @@ namespace Driver
         static inline GPIO_TypeDef *_ITRIP_PIN_BASE = GPIOA;
         static inline GPIO_TypeDef *_VFO_PIN_BASE = GPIOB;
 
-        static constexpr auto array_size = 90;
-        static constexpr auto ARR_value = 10'000u;
+        static constexpr auto array_size = 30;
+        static constexpr auto ARR_value = 1'000u;
 
 
         static constexpr auto DMA_buffer_size = 3;
-        static inline uint8_t encoder_counter = 10;
+        static inline uint8_t encoder_counter = 50;
         static constexpr auto
             phase_U_start_value = 0,
             phase_V_start_value = array_size / 3,
@@ -67,12 +81,14 @@ namespace Driver
             phase_V = phase_V_start_value,
             phase_W = phase_W_start_value;
 
+        static inline auto koeff_voltage = 1.0f; // U/f = const
 
-        static inline uint8_t frequency{122};
+        static inline bool is_reverse = false;
+        //static inline uint8_t frequency{10};
     private:
         static constexpr std::array<uint16_t, array_size> _sine_table_phases
         {
-            128, 136, 145, 154, 163, 171, 179, 187, 195, 202,
+            /* 128, 136, 145, 154, 163, 171, 179, 187, 195, 202,
             209, 216, 222, 228, 233, 238, 242, 246, 249, 251,
             253, 254, 255, 255, 254, 253, 251, 249, 246, 242,
             238, 233, 228, 222, 216, 209, 202, 195, 187, 179,
@@ -80,7 +96,12 @@ namespace Driver
             84, 76, 68, 60, 53, 46, 39, 33, 27, 22,
             17, 13, 9, 6, 4, 2, 1, 0, 0, 1,
             2, 4, 6, 9, 13, 17, 22, 27, 33, 39,
-            46, 53, 60, 68, 76, 84, 92, 101, 110, 119
+            46, 53, 60, 68, 76, 84, 92, 101, 110, 119 */
+            500, 603, 703, 793, 871, 932, 975,
+            996, 996, 975, 932, 871, 793, 703,
+            603, 500, 396, 296, 206, 128, 67,
+            24, 3, 3, 24, 67, 128, 206,
+            296, 396
         };
         static inline std::array<uint16_t, DMA_buffer_size> DMA_buffer;
 
@@ -145,7 +166,7 @@ namespace Driver
                 return cnt_to_psc(100);
             if (counter < 5)
                 return cnt_to_psc(5);
-            return 84 * counter;
+            return static_cast<float>(F_CPU) / ((ARR_value - 1) * array_size * counter);
         }
 
         static void set_frequency(const uint16_t &);
@@ -177,7 +198,7 @@ namespace Driver
          */
         static inline void toggle_driver()
         {
-            GPIOA->ODR ^= GPIO_ODR_OD5_Msk;
+            _ITRIP_PIN_BASE->ODR ^= GPIO_ODR_OD5_Msk;
         }
 
         /**

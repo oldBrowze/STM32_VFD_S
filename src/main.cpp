@@ -1,9 +1,7 @@
 #include <stm32f4xx.h>
-#include <string>
 
 #include "clock_configuration.hpp"
 #include "stm32f4_usart.hpp"
-//#include "74hc595.hpp"
 #include "generator.hpp"
 
 [[deprecated("Перенести в SystemInit()")]] __attribute__((constructor(101))) void rcc_enable()

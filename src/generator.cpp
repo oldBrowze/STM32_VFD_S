@@ -8,13 +8,13 @@ namespace Driver
         pwm_configuration();
         encoder_configuration();
         //adc_configuration();
-        //button_configuration();
+        button_configuration();
     }
 
     void VFDController::pwm_configuration()
     {
         NVIC_EnableIRQ(TIM1_UP_TIM10_IRQn);
-        NVIC_SetPriority(TIM1_UP_TIM10_IRQn, 0);
+        NVIC_SetPriority(TIM1_UP_TIM10_IRQn, IRQ_Priority::TIM1_UP_TIM10_pwm_generation);
 
         /* конфигурация каналов ШИМ */
         /* инверсные каналы - AF01 (PB13 - CH1N / PB14 - CH2N / PB15 - CH3N) */
@@ -40,7 +40,7 @@ namespace Driver
         _TIM_PWM_BASE->DIER = TIM_DIER_UIE;
         //_TIM_PWM_BASE->EGR |= TIM_EGR_UG;
 
-        _TIM_PWM_BASE->PSC = cnt_to_psc(50);
+        _TIM_PWM_BASE->PSC = (cnt_to_psc(encoder_counter));
         _TIM_PWM_BASE->ARR = ARR_value;
 
         _TIM_PWM_BASE->CR1 |= TIM_CR1_CEN;
@@ -57,7 +57,7 @@ namespace Driver
         GPIOB->PUPDR |= (0b01 << GPIO_PUPDR_PUPD1_Pos);
 
         NVIC_EnableIRQ(EXTI1_IRQn);
-        NVIC_SetPriority(EXTI1_IRQn, 2);
+        NVIC_SetPriority(EXTI1_IRQn, IRQ_Priority::EXTI1_VFO_detected);
 
         EXTI->IMR |= EXTI_IMR_MR1_Msk;
         EXTI->FTSR |= EXTI_FTSR_TR1_Msk;
@@ -70,8 +70,8 @@ namespace Driver
         NVIC_EnableIRQ(EXTI0_IRQn);
         NVIC_EnableIRQ(EXTI2_IRQn);
 
-        NVIC_SetPriority(EXTI0_IRQn, 1);
-        NVIC_SetPriority(EXTI2_IRQn, 2);
+        NVIC_SetPriority(EXTI0_IRQn, IRQ_Priority::EXTI0_encoder_rotate);
+        NVIC_SetPriority(EXTI2_IRQn, IRQ_Priority::EXTI2_encoder_button);
 
         /* конфигурация ног для чтения энкодера(входы)
          *  PA0 - ENC_A | PA1 - ENC_B | PB2 - ENC_KEY
@@ -92,7 +92,7 @@ namespace Driver
     void VFDController::adc_configuration()
     {
         NVIC_EnableIRQ(DMA2_Stream0_IRQn);
-        NVIC_SetPriority(DMA2_Stream0_IRQn, 3);
+        NVIC_SetPriority(DMA2_Stream0_IRQn, IRQ_Priority::DMA2_Stream0_transfer_from_adc);
 
         /* конфигурация портов ADC как analog mode
          *  PA2 - ADC_IN2
@@ -150,10 +150,10 @@ namespace Driver
     {
         __enable_irq();
         NVIC_EnableIRQ(EXTI15_10_IRQn);
-        NVIC_SetPriority(EXTI15_10_IRQn, 15);
+        NVIC_SetPriority(EXTI15_10_IRQn, IRQ_Priority::EXTI15_10_button_start_stop);
 
         NVIC_EnableIRQ(EXTI9_5_IRQn);
-        NVIC_SetPriority(EXTI9_5_IRQn, 15);
+        NVIC_SetPriority(EXTI9_5_IRQn, IRQ_Priority::EXTI9_5_button_reverse);
 
         GPIOC->MODER |= (0b00 << GPIO_MODER_MODE15_Pos)/* | (0b00 << GPIO_MODER_MODE7_Pos) | (0b00 << GPIO_MODER_MODE8_Pos)*/;
         GPIOC->PUPDR |= (0b10 << GPIO_PUPDR_PUPD15_Pos)/* | (0b00 << GPIO_MODER_MODE7_Pos) | (0b00 << GPIO_MODER_MODE8_Pos)*/;
@@ -174,7 +174,7 @@ namespace Driver
     void VFDController::set_frequency(const uint16_t &_frequency)
     {
         _TIM_PWM_BASE->PSC = cnt_to_psc(_frequency);
-        frequency = get_frequency();
+        //frequency = get_frequency();
     }
 
     uint8_t VFDController::get_frequency()
@@ -190,13 +190,13 @@ namespace Driver
         switch(_digit)
         {
             case 0:
-                tranceiver_SPI.transmit(digits_code[0], symbols_code[(frequency % 10)]); 
+                tranceiver_SPI.transmit(digits_code[0], symbols_code[(encoder_counter % 10)]); 
                 break;
             case 1: 
-                tranceiver_SPI.transmit(digits_code[1], symbols_code[(frequency / 10 % 10)]); 
+                tranceiver_SPI.transmit(digits_code[1], symbols_code[(encoder_counter / 10 % 10)]); 
                 break;
             case 2: 
-                tranceiver_SPI.transmit(digits_code[2], symbols_code[(frequency / 100)]); 
+                tranceiver_SPI.transmit(digits_code[2], symbols_code[(encoder_counter / 100)]); 
                 break;
             case 3: 
                 tranceiver_SPI.transmit(digits_code[3], symbols_code[10]); 
@@ -211,7 +211,7 @@ namespace Driver
 
 extern "C" void DMA2_Stream0_IRQHandler()
 {
-    // using VFD_t = Driver::VFDController;
+    // using VFD = Driver::VFDController;
 
     if (DMA2->LISR & DMA_LISR_TCIF0)
     {
@@ -221,9 +221,9 @@ extern "C" void DMA2_Stream0_IRQHandler()
 
         // FIXME: не оптимизировано
         //передача буфера
-        // VFD_t::tranceiver.transmit(std::string_view("ADC value is: "));
-        // VFD_t::tranceiver.transmit(std::string_view(std::to_string(ADC1->DR)));
-        // VFD_t::tranceiver.transmit(std::string_view("\n"));
+        // VFD::tranceiver.transmit(std::string_view("ADC value is: "));
+        // VFD::tranceiver.transmit(std::string_view(std::to_string(ADC1->DR)));
+        // VFD::tranceiver.transmit(std::string_view("\n"));
 
         //__enable_irq();
     }
@@ -235,7 +235,7 @@ extern "C" void DMA2_Stream0_IRQHandler()
  */
 extern "C" void EXTI0_IRQHandler()
 {
-    using VFD_t = Driver::VFDController;
+    using VFD = Driver::VFDController;
 
     if (EXTI->PR & EXTI_PR_PR0_Msk)
     {
@@ -245,15 +245,15 @@ extern "C" void EXTI0_IRQHandler()
 
     if (GPIOA->IDR & GPIO_IDR_ID1) //влево
     {
-        if (--VFD_t::encoder_counter < 10)
-            VFD_t::encoder_counter = 10;
-        VFD_t::set_frequency(VFD_t::encoder_counter);
+        if (--VFD::encoder_counter < 10)
+            VFD::encoder_counter = 10;
+        VFD::set_frequency(VFD::encoder_counter);
     }
     else //вправо
     {
-        if (++VFD_t::encoder_counter > 100)
-            VFD_t::encoder_counter = 100;
-        VFD_t::set_frequency(VFD_t::encoder_counter);
+        if (++VFD::encoder_counter > 100)
+            VFD::encoder_counter = 100;
+        VFD::set_frequency(VFD::encoder_counter);
     }
 }
 
@@ -267,7 +267,7 @@ extern "C" void EXTI1_IRQHandler()
     {
         EXTI->PR = EXTI_PR_PR1_Msk;
 
-        //VFD_t::toggle_driver();
+        //VFD::toggle_driver();
     }
 }
 
@@ -277,43 +277,55 @@ extern "C" void EXTI1_IRQHandler()
  */
 extern "C" void EXTI2_IRQHandler()
 {
-    using VFD_t = Driver::VFDController;
+    using VFD = Driver::VFDController;
 
     if (EXTI->PR & EXTI_PR_PR2_Msk)
     {
         EXTI->PR = EXTI_PR_PR2_Msk;
-        VFD_t::toggle_driver();
+        VFD::toggle_driver();
     }
 }
 
 /**
- * @brief Неизвестный обработчик
+ * @brief Обработчик нажатия кнопки остановки
  * 
  */
 extern "C" void EXTI15_10_IRQHandler()
 {
-    //using VFD_t = Driver::VFDController;
+    using VFD = Driver::VFDController;
 
+    /* Кнопка остановки */
     if (EXTI->PR & EXTI_PR_PR15_Msk)
     {
         EXTI->PR = EXTI_PR_PR15_Msk;
+        
+        VFD::stop_driver();
     }
-    //VFD_t::toggle_driver();
+    //VFD::toggle_driver();
 }
 
 /**
- * @brief Неизвестный обработчик
+ * @brief Обработчик нажатия кнопок пуска / реверса 
  * 
  */
 extern "C" void EXTI9_5_IRQHandler()
 {
-    using VFD_t = Driver::VFDController;
+    using VFD = Driver::VFDController;
 
+    /* Кнопка запуска */
     if (EXTI->PR & EXTI_PR_PR9_Msk)
     {
         EXTI->PR = EXTI_PR_PR9_Msk;
+        VFD::start_driver();
     }
-    //VFD_t::toggle_driver();
+    
+    /* Кнопка реверса */
+    if (EXTI->PR & EXTI_PR_PR8_Msk)
+    {
+        EXTI->PR = EXTI_PR_PR8_Msk;
+        VFD::is_reverse = !VFD::is_reverse;
+    }
+    //VFD::toggle_driver();
 }
 
 /**
@@ -322,24 +334,24 @@ extern "C" void EXTI9_5_IRQHandler()
  */
 extern "C" void TIM1_UP_TIM10_IRQHandler()
 {
-    using VFD_t = Driver::VFDController;
+    using VFD = Driver::VFDController;
 
-    if (VFD_t::_TIM_PWM_BASE->SR & TIM_SR_UIF)
+    if (VFD::_TIM_PWM_BASE->SR & TIM_SR_UIF)
     {
-        VFD_t::_TIM_PWM_BASE->SR = 0;
+        VFD::_TIM_PWM_BASE->SR = 0;
 
-        VFD_t::_TIM_PWM_BASE->CCR1 = VFD_t::_sine_table_phases[VFD_t::phase_U];
-        VFD_t::_TIM_PWM_BASE->CCR2 = VFD_t::_sine_table_phases[VFD_t::phase_V];
-        VFD_t::_TIM_PWM_BASE->CCR3 = VFD_t::_sine_table_phases[VFD_t::phase_W];
+        VFD::_TIM_PWM_BASE->CCR1 = VFD::_sine_table_phases[(!VFD::is_reverse) ? VFD::phase_U : VFD::phase_W] * VFD::koeff_voltage;
+        VFD::_TIM_PWM_BASE->CCR2 = VFD::_sine_table_phases[VFD::phase_V] * VFD::koeff_voltage;
+        VFD::_TIM_PWM_BASE->CCR3 = VFD::_sine_table_phases[(!VFD::is_reverse) ? VFD::phase_W : VFD::phase_U] * VFD::koeff_voltage;
 
-        if (++VFD_t::phase_U == VFD_t::array_size)
-            VFD_t::phase_U = 0;
+        if (++VFD::phase_U == VFD::array_size)
+            VFD::phase_U = 0;
 
-        if (++VFD_t::phase_V == VFD_t::array_size)
-            VFD_t::phase_V = 0;
+        if (++VFD::phase_V == VFD::array_size)
+            VFD::phase_V = 0;
 
-        if (++VFD_t::phase_W == VFD_t::array_size)
-            VFD_t::phase_W = 0;
+        if (++VFD::phase_W == VFD::array_size)
+            VFD::phase_W = 0;
     }
     // GPIOA->ODR ^= GPIO_ODR_OD5_Msk;
 }
