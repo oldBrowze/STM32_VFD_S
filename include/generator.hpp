@@ -52,6 +52,8 @@ namespace Driver
         DMA2_Stream0_transfer_from_adc = 14,
         EXTI15_10_button_start_stop = 10,
         EXTI9_5_button_reverse = 11,
+        TIM4_display_update = 14,
+        TIM3_speed_correct = 15,
         TIM1_UP_TIM10_pwm_generation = 15
     };
 
@@ -68,8 +70,8 @@ namespace Driver
         static inline GPIO_TypeDef *_VFO_PIN_BASE = GPIOB;
 
         static constexpr auto array_size = __settings::_size;
-        static constexpr auto dfreq = 100u;
-        static constexpr auto ARR_value = 8400 - 1; //несущая - 10 кГЦ
+        static constexpr auto dfreq = 3 * 100u;
+        static constexpr auto ARR_value = 3 * 8400 - 1; //несущая - 10 кГЦ
         static constexpr auto PSC_value = 0;
 
         static constexpr auto DMA_buffer_size = 3;
@@ -85,6 +87,11 @@ namespace Driver
             phase_W = phase_W_start_value;
 
         static inline auto koeff_voltage = 1.0f; // U/f = const
+        /* время ускорения / торможения в секундах */
+        static inline auto 
+            speed_start_in_msec = 5000u,
+            speed_stop_in_msec = 5000u;
+
 
         static inline bool is_reverse = false;
         //static inline uint8_t frequency{10};
@@ -131,6 +138,7 @@ namespace Driver
         static void encoder_configuration();
         static void adc_configuration();
         static void button_configuration();
+        static void speed_timer_configuration();
 
         friend void ::TIM1_UP_TIM10_IRQHandler();
         friend void ::EXTI0_IRQHandler();

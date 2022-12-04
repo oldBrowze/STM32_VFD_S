@@ -33,7 +33,7 @@ void TIM_enable()
     TIM4->EGR |= TIM_EGR_UG;
     TIM4->CR1 |= TIM_CR1_CEN;
 
-    NVIC_SetPriority(TIM4_IRQn, 15);
+    NVIC_SetPriority(TIM4_IRQn, Driver::IRQ_Priority::TIM4_display_update);
     NVIC_EnableIRQ(TIM4_IRQn);
 }
 

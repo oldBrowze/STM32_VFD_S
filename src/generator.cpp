@@ -9,6 +9,21 @@ namespace Driver
         encoder_configuration();
         //adc_configuration();
         button_configuration();
+        //speed_timer_configuration();
+    }
+
+    void VFDController::speed_timer_configuration()
+    {
+        TIM3->DIER |= TIM_DIER_UIE; //прерывание
+        TIM3->ARR = 100 - 1;
+        //TIM4->PSC = 8400 - 1;
+        TIM3->PSC = 500 - 1;
+
+        TIM3->EGR |= TIM_EGR_UG;
+        TIM3->CR1 |= TIM_CR1_CEN;
+
+        NVIC_SetPriority(TIM3_IRQn, Driver::IRQ_Priority::TIM3_speed_correct);
+        NVIC_EnableIRQ(TIM3_IRQn);   
     }
 
     void VFDController::pwm_configuration()
