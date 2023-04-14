@@ -14,6 +14,8 @@ extern "C" void EXTI2_IRQHandler();
 extern "C" void EXTI15_10_IRQHandler();
 extern "C" void EXTI9_5_IRQHandler();
 extern "C" void DMA2_Stream0_IRQHandler();
+extern "C" void TIM4_IRQHandler();
+extern "C" void ADC_IRQHandler();
 
 /* Конфигурационная карта портов модуля Generator
  *   Порт    |   Функция         | Состояние |   Описание
@@ -49,7 +51,7 @@ namespace Driver
         EXTI2_encoder_button = 1,
         EXTI0_encoder_rotate = 1,
         EXTI1_VFO_detected = 13,
-        DMA2_Stream0_transfer_from_adc = 14,
+        ADC_IRQ = 14,
         EXTI15_10_button_start_stop = 10,
         EXTI9_5_button_reverse = 11,
         TIM4_display_update = 14,
@@ -60,7 +62,7 @@ namespace Driver
     class VFDController final
     {
     public:
-        static inline Driver::USART tranceiver_USART{USART1, 115'200};
+        static inline Driver::USART tranceiver_USART{USART1, 9600};
         static inline Driver::SPI tranceiver_SPI{SPI1};
 
     private:
@@ -139,6 +141,7 @@ namespace Driver
         static void adc_configuration();
         static void button_configuration();
         static void speed_timer_configuration();
+        static void display_configuration();
 
         friend void ::TIM1_UP_TIM10_IRQHandler();
         friend void ::EXTI0_IRQHandler();
@@ -147,6 +150,8 @@ namespace Driver
         friend void ::DMA2_Stream0_IRQHandler();
         friend void ::EXTI15_10_IRQHandler();
         friend void ::EXTI9_5_IRQHandler();
+        friend void ::TIM4_IRQHandler();
+        friend void ::ADC_IRQHandler();
     public:
         /**
          * @brief Конвертер желаемой частоты(ЖЧ), снимаемой с потенциометра, в ARR таймера

@@ -17,15 +17,18 @@ namespace Driver
         //TODO:на каждый uart свой пин сделать
 
         //PA9 - Tx
-        /*
-        GPIOA->MODER |= (0b10 << GPIO_MODER_MODER9_Pos);
-        GPIOA->AFR[1] |= (0b111 << GPIO_AFRH_AFSEL9_Pos);
-        */
+        
+        //GPIOA->MODER |= (0b10 << GPIO_MODER_MODER9_Pos);
+        //GPIOA->AFR[1] |= (0b111 << GPIO_AFRH_AFSEL9_Pos);
+        
 
         /* PB6 - Tx */
 
         GPIOB->MODER |= (0b10 << GPIO_MODER_MODER6_Pos);
         GPIOB->AFR[0] |= (0b111 << GPIO_AFRL_AFSEL6_Pos);
+
+        GPIOB->MODER |= (0b10 << GPIO_MODER_MODER7_Pos);
+        GPIOB->AFR[0] |= (0b111 << GPIO_AFRL_AFSEL7_Pos);
     }
     
     void USART::transmit(const uint8_t& message)

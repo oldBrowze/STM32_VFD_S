@@ -4,11 +4,11 @@ namespace Driver
 {
     void VFDController::configuration()
     {
-        driver_signal_configuration();
-        pwm_configuration();
-        encoder_configuration();
-        //adc_configuration();
-        button_configuration();
+        //driver_signal_configuration();
+        //pwm_configuration();
+        //encoder_configuration();
+        adc_configuration();
+        //button_configuration();
         //speed_timer_configuration();
     }
 
@@ -106,8 +106,8 @@ namespace Driver
 
     void VFDController::adc_configuration()
     {
-        NVIC_EnableIRQ(DMA2_Stream0_IRQn);
-        NVIC_SetPriority(DMA2_Stream0_IRQn, IRQ_Priority::DMA2_Stream0_transfer_from_adc);
+        NVIC_EnableIRQ(ADC_IRQn);
+        NVIC_SetPriority(ADC_IRQn, IRQ_Priority::ADC_IRQ);
 
         /* конфигурация портов ADC как analog mode
          *  PA2 - ADC_IN2
@@ -121,8 +121,8 @@ namespace Driver
         // NVIC_EnableIRQ(ADC_IRQn);
         ADC1->CR2 |= ADC_CR2_ADON;
         /* Настройка ADC */
-        ADC1->CR1 |= ADC_CR1_SCAN;
-        ADC1->CR2 |= ADC_CR2_DDS | ADC_CR2_DMA | ADC_CR2_CONT | ADC_CR2_EOCS;
+        ADC1->CR1 |= ADC_CR1_SCAN | ADC_CR1_JDISCEN | ADC_CR1_JEOCIE;
+        //ADC1->CR2 |= ADC_CR2_JEOCIE;
 
         // 28 циклов на измерение
         ADC1->SMPR2 |= (0b010 << ADC_SMPR2_SMP0_Pos) |
@@ -130,35 +130,17 @@ namespace Driver
                        (0b010 << ADC_SMPR2_SMP2_Pos);
 
         // 3 канала
-        ADC1->SQR1 |= (0b0010 << ADC_SQR1_L_Pos);
+        ADC1->JSQR |= (0b0010 << ADC_JSQR_JL_Pos);
 
         /*
             1 канал ADC_IN2
             2 канал ADC_IN3
             3 канал ADC_IN4
         */
-        ADC1->SQR3 |= (0b0010 << ADC_SQR3_SQ1_Pos) |
-                      (0b0011 << ADC_SQR3_SQ2_Pos) |
-                      (0b0100 << ADC_SQR3_SQ3_Pos);
+        ADC1->JSQR |= (0b0010 << ADC_JSQR_JSQ2_Pos) |
+                      (0b0011 << ADC_JSQR_JSQ3_Pos) |
+                      (0b0100 << ADC_JSQR_JSQ4_Pos);
 
-        /* настройка DMA ADC */
-
-        //канал 0
-        DMA2_Stream0->NDTR = 3;
-        DMA2_Stream0->PAR = reinterpret_cast<std::uintptr_t>(&ADC1->DR);
-        DMA2_Stream0->M0AR = reinterpret_cast<std::uintptr_t>(DMA_buffer.data());
-
-        DMA2_Stream0->CR = (0x0 << DMA_SxCR_CHSEL_Pos) |
-                           (0b11 << DMA_SxCR_PL_Pos) |
-                           (0b01 << DMA_SxCR_MSIZE_Pos) |
-                           (0b01 << DMA_SxCR_PSIZE_Pos) |
-                           (DMA_SxCR_MINC) |
-                           (DMA_SxCR_CIRC) |
-                           (0b00 << DMA_SxCR_DIR_Pos) |
-                           (DMA_SxCR_TCIE);
-
-        ADC1->CR2 |= ADC_CR2_SWSTART;
-        DMA2_Stream0->CR |= DMA_SxCR_EN;
     }
 
     void VFDController::button_configuration()
@@ -224,24 +206,32 @@ namespace Driver
 
 }
 
+extern "C" void ADC_IRQHandler()
+{
+    using VFD = Driver::VFDController;
+
+    if(ADC1->SR & ADC_SR_JEOC)
+        ADC1->SR &= ~ADC_SR_JEOC;
+
+    static char buffer[100];
+    snprintf(buffer, sizeof buffer, "CH1: %ld\nCH2: %ld\nCH3: %ld\n", ADC1->JDR1, ADC1->JDR2, ADC1->JDR3);
+    VFD::tranceiver_USART.transmit(buffer);  
+}
+
 extern "C" void DMA2_Stream0_IRQHandler()
 {
-    // using VFD = Driver::VFDController;
-
-    if (DMA2->LISR & DMA_LISR_TCIF0)
-    {
-        DMA2->LISR = ~DMA_LISR_TCIF0;
+    using VFD = Driver::VFDController;
+    char buffer[100];
+    DMA2->LISR |= DMA_LISR_TCIF0;
 
         //__disable_irq();
 
         // FIXME: не оптимизировано
         //передача буфера
-        // VFD::tranceiver.transmit(std::string_view("ADC value is: "));
-        // VFD::tranceiver.transmit(std::string_view(std::to_string(ADC1->DR)));
-        // VFD::tranceiver.transmit(std::string_view("\n"));
+        snprintf(buffer, sizeof buffer, "CH1: %d\nCH2: %d\nCH3: %d\n", VFD::DMA_buffer[0], VFD::DMA_buffer[1], VFD::DMA_buffer[2]);
+        VFD::tranceiver_USART.transmit(buffer);
 
         //__enable_irq();
-    }
 }
 
 /**

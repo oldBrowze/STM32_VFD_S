@@ -26,9 +26,9 @@
 void TIM_enable()
 {
     TIM4->DIER |= TIM_DIER_UIE; //прерывание
-    TIM4->ARR = 100 - 1;
-    //TIM4->PSC = 8400 - 1;
-    TIM4->PSC = 500 - 1;
+    TIM4->ARR = 10000 - 1;
+    TIM4->PSC = 8400 - 1;
+    //TIM4->PSC = 500 - 1;
 
     TIM4->EGR |= TIM_EGR_UG;
     TIM4->CR1 |= TIM_CR1_CEN;
@@ -56,5 +56,10 @@ extern "C" void TIM4_IRQHandler()
 
     if (TIM4->SR & TIM_SR_UIF_Msk)
         TIM4->SR &= ~TIM_SR_UIF_Msk;
-    VFD::update_frequency();
+    
+    //char buffer[100];
+
+    ADC1->CR2 |= ADC_CR2_JSWSTART;
+    //snprintf(buffer, sizeof buffer, "CH1: %d\nCH2: %d\nCH3: %d\n", VFD::DMA_buffer[0], VFD::DMA_buffer[1], VFD::DMA_buffer[2]);
+    //VFD::update_frequency();
 }
